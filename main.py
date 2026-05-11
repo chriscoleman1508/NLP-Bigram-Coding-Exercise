@@ -1,6 +1,7 @@
 from bigram_lm import *
 from typing import List
 import numpy as np
+import random
 from collections import Counter
 
 
@@ -81,28 +82,40 @@ def sample_word(lm, context_word: str):
     :param lm:
     :param context_word:
     :return: A randomly-sampled word to follow context_word according to the probabilities from lm.get_probability.
-    Hint: you'll want to use something like
-    import random
-    random.uniform(0, 1)
-    to get a random number, then follow the scheme described in the video for how to turn that random number
-    into a random word.
     """
-    raise Exception("IMPLEMENT ME")
+    rand = random.uniform(0, 1)
+    cumulative = 0.0
+    last_word = None
+
+    for word in lm.get_vocabulary():
+        prob = lm.get_probability(context_word, word)
+        cumulative += prob
+        last_word = word
+
+        if rand < cumulative:
+            return word
+
+    # fallback in case of rounding error
+    return last_word
 
 
-def sample_sentence(lm, context_word: str):
+def sample_sentence(lm, context: str):
     """
     :param lm:
-    :param context_word: An initial word to seed the sentence with
-    :return: Up to 10 words as a continuation of context_word by repeatedly sampling the next word
+    :param context: An initial word or phrase to seed the sentence with
+    :return: Up to 10 words as a continuation of context by repeatedly sampling the next word
     """
-    sentence = [context_word]
+    sentence = context.strip().split()
+    context_word = sentence[-1]
+
     for i in range(0, 10):
         next_word = sample_word(lm, context_word)
         context_word = next_word
         sentence.append(next_word)
+
         if next_word == END_SYMBOL:
             return sentence
+
     return sentence
 
 
@@ -112,22 +125,35 @@ def get_best_word(lm, context_word: str):
     :param context_word:
     :return: The best word to follow context_word according to the probabilities from lm.get_probability
     """
-    raise Exception("IMPLEMENT ME")
+    best_word = None
+    max_prob = -1.0
 
+    for word in lm.get_vocabulary():
+        prob = lm.get_probability(context_word, word)
 
-def get_best_sentence(lm, context_word: str):
+        if prob > max_prob:
+            max_prob = prob
+            best_word = word
+
+    return best_word
+
+def get_best_sentence(lm, context: str):
     """
     :param lm:
-    :param context_word: An initial word to seed the sentence with
-    :return: Up to 10 words as a continuation of context_word by repeatedly taking the best next word
+    :param context: An initial word or phrase to seed the sentence with
+    :return: Up to 10 words as a continuation of context by repeatedly taking the best next word
     """
-    sentence = [context_word]
+    sentence = context.strip().split()
+    context_word = sentence[-1]
+
     for i in range(0, 10):
         next_word = get_best_word(lm, context_word)
         context_word = next_word
         sentence.append(next_word)
+
         if next_word == END_SYMBOL:
             return sentence
+
     return sentence
 
 
@@ -135,15 +161,29 @@ def read_data(path_to_wikitext: str = "./"):
     return (read_wikitext(path_to_wikitext + "/wiki.train.tokens"), read_wikitext(path_to_wikitext + "/wiki.valid.tokens"))
 
 
+
 if __name__ == "__main__":
-    (train, test) = read_data()
-    # lm = estimate_unigram_lm_from_data(train_lines, indexer)
+    train, test = read_data()
+
     lm = estimate_bigram_lm(train)
+
     check_normalization(lm)
+
     query_lm(lm, "I like to")
-    print(repr(get_best_sentence(lm, "I")))
-    print(repr(sample_sentence(lm, "I")))
-    print(repr(sample_sentence(lm, "I")))
-    print(repr(sample_sentence(lm, "I")))
-    print(repr(sample_sentence(lm, "You")))
-    print(repr(sample_sentence(lm, "We")))
+    query_lm(lm, "I want to")
+
+    print("Best sentences:")
+    print(" ".join(get_best_sentence(lm, "I")))
+    print(" ".join(get_best_sentence(lm, "I want to")))
+    print(" ".join(get_best_sentence(lm, "The president")))
+    print(" ".join(get_best_sentence(lm, "In the")))
+    print(" ".join(get_best_sentence(lm, "New")))
+
+    print()
+    print("Sampled sentences:")
+    print(" ".join(sample_sentence(lm, "I")))
+    print(" ".join(sample_sentence(lm, "I")))
+    print(" ".join(sample_sentence(lm, "I want to")))
+    print(" ".join(sample_sentence(lm, "The president")))
+    print(" ".join(sample_sentence(lm, "In the")))
+    print(" ".join(sample_sentence(lm, "New")))
